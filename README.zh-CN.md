@@ -60,8 +60,14 @@
 
 ## 📦 快速开始
 
-### 方式一：直接下载 Windows 便携版 `.exe`
-前往 [**项目官网介绍页（yuriaqua.com/scp-archive）**](https://yuriaqua.com/scp-archive/) 或直接从 [**Releases**](https://github.com/toydream525/scp-archive-desktop/releases/latest) 下载最新的单文件绿色便携版 **`SCP Archive.exe`**，双击即可运行，无需安装。
+### 方式一：直接下载 Windows 发行版（`v1.0.1` 三形态并列）
+前往 [**项目官网介绍页（yuriaqua.com/scp-archive）**](https://yuriaqua.com/scp-archive/) 或直接从 [**Releases v1.0.1**](https://github.com/toydream525/scp-archive-desktop/releases/tag/v1.0.1) 按需选择下载：
+
+| 发行形态 | 文件名 | 适用场景 |
+| :--- | :--- | :--- |
+| **⭐ SCP 风格安装包版（推荐）** | [`SCP.Archive.Setup.exe`](https://github.com/toydream525/scp-archive-desktop/releases/download/v1.0.1/SCP.Archive.Setup.exe) | RAISA 暗黑基金会风格安装向导，自定义安装目录与桌面快捷方式，**双击秒开** |
+| **📦 绿色免安装便携版** | [`SCP.Archive.Portable.zip`](https://github.com/toydream525/scp-archive-desktop/releases/download/v1.0.1/SCP.Archive.Portable.zip) | 解压一次到任意目录即可运行 `SCP Archive.exe`，**免安装且双击秒开** |
+| **⚡ 单文件便携 EXE 版** | [`SCP.Archive.exe`](https://github.com/toydream525/scp-archive-desktop/releases/download/v1.0.1/SCP.Archive.exe) | 单文件随身携带、免解压双击即用（冷启动需几秒自动解包） |
 
 ### 方式二：从源码运行或自行打包
 

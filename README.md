@@ -60,8 +60,14 @@
 
 ## 📦 Quick Start
 
-### Option 1: Download Prebuilt Windows `.exe`
-Visit the [**Official Project Page (yuriaqua.com/scp-archive)**](https://yuriaqua.com/scp-archive/) or download the latest standalone portable **`SCP Archive.exe`** directly from [**Releases**](https://github.com/toydream525/scp-archive-desktop/releases/latest) and double-click to run—no installation required.
+### Option 1: Download Prebuilt Windows Releases (`v1.0.1`)
+Visit the [**Official Project Page (yuriaqua.com/scp-archive)**](https://yuriaqua.com/scp-archive/) or download directly from [**Releases v1.0.1**](https://github.com/toydream525/scp-archive-desktop/releases/tag/v1.0.1):
+
+| Format | File | Recommended For |
+| :--- | :--- | :--- |
+| **⭐ SCP-Styled Windows Installer** | [`SCP.Archive.Setup.exe`](https://github.com/toydream525/scp-archive-desktop/releases/download/v1.0.1/SCP.Archive.Setup.exe) | One-time RAISA-themed wizard, custom path & desktop shortcut, **instant <1s startup** |
+| **📦 Green Portable ZIP** | [`SCP.Archive.Portable.zip`](https://github.com/toydream525/scp-archive-desktop/releases/download/v1.0.1/SCP.Archive.Portable.zip) | Extract once anywhere & run `SCP Archive.exe`, **no install + instant startup** |
+| **⚡ Single-File Portable EXE** | [`SCP.Archive.exe`](https://github.com/toydream525/scp-archive-desktop/releases/download/v1.0.1/SCP.Archive.exe) | Self-contained single file, double-click anywhere without extracting |
 
 ### Option 2: Run or Build from Source
 
