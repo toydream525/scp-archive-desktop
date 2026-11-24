@@ -1,0 +1,16 @@
+﻿SCP Archive Desktop — Open Source & SCP Foundation Licensing Agreement
+======================================================================
+
+[中文说明]
+1. 本软件（SCP Archive）为社区开发的免费、开源第三方 SCP-Wiki PC 阅读客户端，客户端源代码遵循 MIT 开源协议。
+2. 所有与 SCP 基金会相关的内容、概念、衍生徽标及通过本客户端访问、缓存或导出的维基文档，均遵循知识共享「署名-相同方式共享 3.0 未本地化版本协议（CC BY-SA 3.0）」，版权归 SCP 基金会维基及各位原作者所有。
+   - 官网主站：https://scp-wiki.wikidot.com/
+   - 中文分部：https://scp-wiki-cn.wikidot.com/
+   - 授权指南：https://scp-wiki-cn.wikidot.com/licensing-guide
+   - CC 协议 ：https://creativecommons.org/licenses/by-sa/3.0/deed.zh
+3. 本安装包不含任何广告、遥测或受限维基正文/图片。您的收藏夹、历史记录与离线缓存仅保存在本机用户目录中。
+
+[English Notice]
+1. SCP Archive is a free, open-source third-party desktop client for the SCP Foundation Wiki. Client source code is licensed under the MIT License.
+2. Content relating to the SCP Foundation, including logo/emblem derivatives and wiki articles retrieved, cached, or exported via this app, is licensed under Creative Commons Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0), originating from https://scp-wiki.wikidot.com/ and its authors.
+3. No ads, telemetry, or bundled SCP articles are included. Bookmarks, reading progress, and offline caches remain locally on your device.

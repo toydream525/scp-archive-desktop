@@ -1,10 +1,10 @@
 {
   "name": "scp-wiki-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Open-source SCP Foundation Wiki PC Desktop Client (EN/CN dual-branch reader with tabs, batch offline cache, export, unified Wikidot login, and proxy support)",
   "license": "MIT",
   "author": "toydream525",
-  "homepage": "https://github.com/toydream525/scp-archive-desktop",
+  "homepage": "https://yuriaqua.com/scp-archive/",
   "repository": {
     "type": "git",
     "url": "https://github.com/toydream525/scp-archive-desktop.git"
@@ -12,7 +12,8 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "build:exe": "electron-builder --win portable"
+    "build:exe": "electron-builder --win portable",
+    "build:all": "electron-builder --win nsis portable zip"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
@@ -28,7 +29,7 @@
     "productName": "SCP Archive",
     "directories": {
       "buildResources": "build",
-      "output": "release/20261124-v6"
+      "output": "release/20261124-v7"
     },
     "files": [
       "src/**/*",
@@ -41,14 +42,48 @@
     ],
     "win": {
       "icon": "build/icon.ico",
+      "artifactName": "SCP Archive Portable.${ext}",
       "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
         {
           "target": "portable",
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
         }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SCP Archive",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallerSidebar": "build/uninstallerSidebar.bmp",
+      "installerHeader": "build/installerHeader.bmp",
+      "license": "build/installer-license.txt",
+      "include": "build/installer.nsh",
+      "installerLanguages": [
+        "zh_CN",
+        "en_US"
+      ],
+      "artifactName": "SCP Archive Setup.exe"
     },
     "portable": {
       "artifactName": "SCP Archive.exe"
