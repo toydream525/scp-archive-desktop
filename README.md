@@ -16,9 +16,11 @@
   <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078d4.svg?style=flat-square" alt="Platform: Windows" />
   <img src="https://img.shields.io/badge/Built%20with-Electron%2035-47848f.svg?style=flat-square" alt="Built with Electron" />
   <img src="https://img.shields.io/badge/i18n-EN%20%7C%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-2ea043.svg?style=flat-square" alt="i18n" />
+  <a href="https://yuriaqua.com/scp-archive/"><img src="https://img.shields.io/badge/Website-yuriaqua.com-5b6cf9.svg?style=flat-square" alt="Website" /></a>
 </p>
 
 <p>
+  <a href="https://yuriaqua.com/scp-archive/"><strong>🌐 Project Site</strong></a> &nbsp;·&nbsp;
   <a href="#-features">Features</a> &nbsp;·&nbsp;
   <a href="#-quick-start">Quick Start</a> &nbsp;·&nbsp;
   <a href="#-keyboard-shortcuts">Shortcuts</a> &nbsp;·&nbsp;

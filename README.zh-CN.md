@@ -16,9 +16,11 @@
   <img src="https://img.shields.io/badge/%E5%B9%B3%E5%8F%B0-Windows%20x64-0078d4.svg?style=flat-square" alt="平台: Windows x64" />
   <img src="https://img.shields.io/badge/%E6%A1%86%E6%9E%B6-Electron%2035-47848f.svg?style=flat-square" alt="Electron 35" />
   <img src="https://img.shields.io/badge/%E5%A4%9A%E8%AF%AD%E8%A8%80-EN%20%7C%20%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-2ea043.svg?style=flat-square" alt="多语言" />
+  <a href="https://yuriaqua.com/scp-archive/"><img src="https://img.shields.io/badge/%E5%AE%98%E7%BD%91-yuriaqua.com-5b6cf9.svg?style=flat-square" alt="项目官网" /></a>
 </p>
 
 <p>
+  <a href="https://yuriaqua.com/scp-archive/"><strong>🌐 项目官网</strong></a> &nbsp;·&nbsp;
   <a href="#-%E6%A0%B8%E5%BF%83%E5%8A%9F%E8%83%BD">核心功能</a> &nbsp;·&nbsp;
   <a href="#-%E5%BF%AB%E9%80%9F%E5%BC%80%E5%A7%8B">快速开始</a> &nbsp;·&nbsp;
   <a href="#-%E5%BF%AB%E6%8D%B7%E9%94%AE%E9%80%9F%E6%9F%A5">快捷键</a> &nbsp;·&nbsp;
