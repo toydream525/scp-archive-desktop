@@ -28,7 +28,7 @@
     "productName": "SCP Archive",
     "directories": {
       "buildResources": "build",
-      "output": "release/20261124-v4"
+      "output": "release/20261124-v5"
     },
     "files": [
       "src/**/*",

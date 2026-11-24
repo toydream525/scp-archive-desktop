@@ -177,6 +177,8 @@ export default {
     licenseBody: 'This client is open-source software (source code under MIT License). All content relating to the SCP Foundation, including the SCP emblem/logo derivatives and wiki articles, is licensed under Creative Commons Attribution-ShareAlike 3.0 (CC BY-SA 3.0) and originates from the SCP Wiki and its authors.',
     licenseOpenGuide: 'SCP Licensing Guide',
     licenseOpenCC: 'CC BY-SA 3.0 Deed',
+    licenseOpenSite: 'Official Website',
+    licenseOpenGithub: 'GitHub Repository',
     cancel: 'Cancel',
     save: 'Save & Apply'
   },

@@ -318,6 +318,12 @@ export class DialogsController {
       close();
     });
 
+    document.getElementById('btn-open-project-site')?.addEventListener('click', () => {
+      window.scpApi.openExternal('https://yuriaqua.com/scp-archive/');
+    });
+    document.getElementById('btn-open-github-repo')?.addEventListener('click', () => {
+      window.scpApi.openExternal('https://github.com/toydream525/scp-archive-desktop');
+    });
     document.getElementById('btn-open-scp-guide')?.addEventListener('click', () => {
       const url = this.app.getSettings().uiLocale === 'en-US'
         ? 'https://scp-wiki.wikidot.com/licensing-guide'

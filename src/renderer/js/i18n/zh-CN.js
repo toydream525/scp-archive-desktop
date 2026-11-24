@@ -177,6 +177,8 @@ export default {
     licenseBody: '本客户端为开源项目（客户端代码采用 MIT 协议）。与 SCP 基金会相关的所有文档内容、概念及衍生标志均遵循知识共享 署名-相同方式共享 3.0 未本地化版本协议（CC BY-SA 3.0），源自 SCP 基金会官网及各位原作者。',
     licenseOpenGuide: '查看 SCP 授权指南',
     licenseOpenCC: 'CC BY-SA 3.0 协议',
+    licenseOpenSite: '项目官网',
+    licenseOpenGithub: 'GitHub 开源仓库',
     cancel: '取消',
     save: '保存并应用'
   },

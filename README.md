@@ -61,7 +61,7 @@
 ## 📦 Quick Start
 
 ### Option 1: Download Prebuilt Windows `.exe`
-Download the latest standalone portable **`SCP Archive.exe`** from the [**Releases**](../../releases) page and double-click to run—no installation required.
+Visit the [**Official Project Page (yuriaqua.com/scp-archive)**](https://yuriaqua.com/scp-archive/) or download the latest standalone portable **`SCP Archive.exe`** directly from [**Releases**](https://github.com/toydream525/scp-archive-desktop/releases/latest) and double-click to run—no installation required.
 
 ### Option 2: Run or Build from Source
 

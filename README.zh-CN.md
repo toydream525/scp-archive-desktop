@@ -61,7 +61,7 @@
 ## 📦 快速开始
 
 ### 方式一：直接下载 Windows 便携版 `.exe`
-前往本仓库的 [**Releases**](../../releases) 页面下载最新的单文件绿色便携版 **`SCP Archive.exe`**，双击即可运行，无需安装。
+前往 [**项目官网介绍页（yuriaqua.com/scp-archive）**](https://yuriaqua.com/scp-archive/) 或直接从 [**Releases**](https://github.com/toydream525/scp-archive-desktop/releases/latest) 下载最新的单文件绿色便携版 **`SCP Archive.exe`**，双击即可运行，无需安装。
 
 ### 方式二：从源码运行或自行打包
 
