@@ -73,6 +73,15 @@
 }
 
 /* Wikidot Clean Content Typography */
+.reader-body { font-size: var(--reader-font-size, 16px); line-height: var(--reader-line-height, 1.75); }
+.reader-body p,
+.reader-body li,
+.reader-body blockquote,
+.reader-body td,
+.reader-body th {
+  font-size: inherit;
+  line-height: inherit;
+}
 .reader-body p { margin: 0 0 1em; }
 .reader-body h1, .reader-body h2, .reader-body h3, .reader-body h4 {
   margin: 1.4em 0 0.6em; line-height: 1.35; color: var(--text); font-weight: 700;
@@ -195,12 +204,27 @@ mark.scp-find-hit.current { background: var(--accent); color: #fff; }
 
 /* Empty / Error / Loading states */
 .reader-state-box {
-  max-width: 520px; margin: 72px auto; padding: 28px 30px; text-align: center;
+  max-width: 440px; margin: 72px auto; padding: 30px 32px; text-align: center;
   border-radius: 12px; background: var(--bg-surface); border: 1px solid var(--border);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
 }
-.reader-state-box h2 { margin: 0 0 10px; font-size: 18px; }
-.reader-state-box p { margin: 0 0 18px; color: var(--text-secondary); line-height: 1.6; }
+.reader-state-box h2 { margin: 0 0 6px; font-size: 18px; }
+.reader-state-box p { margin: 0 0 12px; color: var(--text-secondary); line-height: 1.6; }
 .reader-state-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.scp-loader-emblem {
+  width: 68px; height: 68px; color: var(--text);
+  filter: drop-shadow(0 0 14px rgba(224, 76, 88, 0.28));
+}
+.scp-loader-title { font-family: "Cascadia Code", "Consolas", monospace; font-weight: 700; font-size: 14px; letter-spacing: 0.08em; color: var(--text); }
+.scp-loader-track { width: 100%; height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 4px; }
+.scp-loader-fill { height: 100%; width: 15%; background: linear-gradient(90deg, var(--accent), #ff7a85); border-radius: 3px; transition: width 0.22s ease-out; }
+.scp-loader-meta { width: 100%; display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-muted); font-family: "Cascadia Code", "Consolas", monospace; }
+.original-splash {
+  position: absolute; inset: 0; z-index: 15; background: var(--bg-app);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.2s ease-out;
+}
+.original-splash.done { opacity: 0; pointer-events: none; }
 .spinner {
   width: 28px; height: 28px; margin: 0 auto 14px; border-radius: 50%;
   border: 3px solid var(--border-strong); border-top-color: var(--accent);

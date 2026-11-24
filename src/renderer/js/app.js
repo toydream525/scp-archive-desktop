@@ -23,7 +23,24 @@ class ScpClientApp {
     this.dialogs = null;
   }
 
+  _setBootProgress(pct, text) {
+    const bar = document.getElementById('boot-progress-bar');
+    const pctEl = document.getElementById('boot-progress-pct');
+    const txtEl = document.getElementById('boot-progress-text');
+    if (bar) bar.style.width = `${pct}%`;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    if (txtEl && text) txtEl.textContent = text;
+  }
+
+  _hideBootSplash() {
+    const splash = document.getElementById('boot-splash');
+    if (!splash) return;
+    splash.classList.add('fade-out');
+    setTimeout(() => splash.remove(), 260);
+  }
+
   async init() {
+    this._setBootProgress(32, '加载本地配置与分部索引...');
     const [settings, branches] = await Promise.all([
       window.scpApi.getSettings(),
       window.scpApi.getBranches()
@@ -31,6 +48,7 @@ class ScpClientApp {
     this.settings = settings;
     this.branches = branches || [];
 
+    this._setBootProgress(64, '初始化多标签工作台与阅读引擎...');
     setLocale(this.settings.uiLocale || 'zh-CN');
     this._applyTheme(this.settings.theme || 'dark');
     document.title = t('app.windowTitle');
@@ -47,10 +65,17 @@ class ScpClientApp {
       if (slug) this.openArticle(site || this.getSite(), slug, { newTab: true });
     });
 
-    // Open initial Explore tab & load catalog + auth in parallel
+    this._setBootProgress(88, '准备探索首页与系列目录...');
     this.createHomeTab();
+
+    // Dismiss splash as soon as core UI is interactive — load network catalog & auth asynchronously!
+    this._setBootProgress(100, '终端就绪');
+    requestAnimationFrame(() => setTimeout(() => this._hideBootSplash(), 120));
+
     this.sidebar.onBranchOrLocaleChanged();
-    window.scpApi.getAuthStatus().then((st) => this.dialogs.updateAccountUI(st));
+    setTimeout(() => {
+      window.scpApi.getAuthStatus().then((st) => this.dialogs.updateAccountUI(st)).catch(() => {});
+    }, 300);
   }
 
   getSettings() {
@@ -76,6 +101,8 @@ class ScpClientApp {
     this.settings = await window.scpApi.updateSettings(patch);
     if ('theme' in patch) this._applyTheme(this.settings.theme);
     this.dialogs.syncAppearanceControls();
+    const valBtn = document.getElementById('btn-tb-font-reset');
+    if (valBtn) valBtn.textContent = String(this.settings.fontSize || 16);
     for (const tab of this.tabs) {
       if (tab.readerView) tab.readerView.applySettings(this.settings);
     }
@@ -84,8 +111,10 @@ class ScpClientApp {
 
   bumpFontSize(delta) {
     const cur = Number(this.settings.fontSize) || 16;
-    const next = Math.max(13, Math.min(24, cur + delta));
-    this.patchSettings({ fontSize: next });
+    const next = Math.max(12, Math.min(30, cur + delta));
+    if (next !== cur) {
+      this.patchSettings({ fontSize: next });
+    }
   }
 
   _applyTheme(theme) {
@@ -233,7 +262,7 @@ class ScpClientApp {
     });
   }
 
-  async openArticle(site, slug, { newTab = false, preferCache = false, pushHistory = true, mode } = {}) {
+  async openArticle(site, slug, { newTab = false, preferCache = true, pushHistory = true, mode } = {}) {
     const targetSite = site || this.getSite();
     const cleanSlug = String(slug || '').trim().replace(/^\/+/, '').toLowerCase();
     if (!cleanSlug) return;
@@ -318,11 +347,14 @@ class ScpClientApp {
       'btn-toggle-collapsibles',
       'btn-bookmark',
       'btn-cache-doc',
-      'btn-export-menu'
+      'btn-export-menu',
+      'font-size-group'
     ];
     for (const id of articleControls) {
       document.getElementById(id).classList.toggle('hidden', !isArticle);
     }
+    const fontValBtn = document.getElementById('btn-tb-font-reset');
+    if (fontValBtn) fontValBtn.textContent = String(this.settings.fontSize || 16);
 
     const omnibox = document.getElementById('omnibox-input');
     if (isArticle) {
@@ -412,12 +444,15 @@ class ScpClientApp {
     this.sidebar.runTagSearch(site, tag);
   }
 
-  refreshSidebarData() {
-    return this.sidebar.refreshUserData();
+  refreshSidebarData(opts) {
+    return this.sidebar.refreshUserData(opts);
   }
 
   // Toolbar Bindings
   _bindToolbar() {
+    document.getElementById('btn-tb-font-dec').addEventListener('click', () => this.bumpFontSize(-1));
+    document.getElementById('btn-tb-font-inc').addEventListener('click', () => this.bumpFontSize(1));
+    document.getElementById('btn-tb-font-reset').addEventListener('click', () => this.patchSettings({ fontSize: 16 }));
     document.getElementById('btn-new-tab').addEventListener('click', () => this.createHomeTab());
     document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('collapsed');

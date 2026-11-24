@@ -21,10 +21,18 @@ function buildEnhancementCss(opts = {}) {
   const contentWidth = Number(opts.contentWidth) || 0;
 
   rules.push(`
-    #page-content {
+    #page-content,
+    #page-content p,
+    #page-content li,
+    #page-content blockquote,
+    #page-content td,
+    #page-content th {
       font-size: ${fontSize}px !important;
       line-height: ${lineHeight} !important;
     }
+    #page-content h1 { font-size: ${Math.round(fontSize * 1.45)}px !important; }
+    #page-content h2 { font-size: ${Math.round(fontSize * 1.25)}px !important; }
+    #page-content h3 { font-size: ${Math.round(fontSize * 1.12)}px !important; }
   `);
 
   if (opts.originalSimplifyChrome) {

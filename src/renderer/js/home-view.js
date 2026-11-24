@@ -130,8 +130,9 @@ export class HomeView {
   }
 
   _bindEvents() {
-    const input = this.container.querySelector('#home-jump-input');
-    const goBtn = this.container.querySelector('#home-jump-btn');
+    const scope = this.container.querySelector('.home-scroll') || this.container;
+    const input = scope.querySelector('#home-jump-input');
+    const goBtn = scope.querySelector('#home-jump-btn');
     const doJump = () => {
       const val = input.value.trim();
       if (val) this.ctx.handleOmniboxInput(val);
@@ -141,28 +142,47 @@ export class HomeView {
       if (e.key === 'Enter') doJump();
     });
 
-    this.container.querySelectorAll('[data-home-random]').forEach((btn) => {
+    scope.querySelectorAll('[data-home-random]').forEach((btn) => {
       btn.addEventListener('click', () => this.ctx.openRandom(btn.dataset.homeRandom));
     });
 
-    this.container.querySelectorAll('[data-discover]').forEach((btn) => {
+    scope.querySelectorAll('[data-discover]').forEach((btn) => {
       btn.addEventListener('click', () => {
         this.discoverTab = btn.dataset.discover;
-        this.container.querySelectorAll('[data-discover]').forEach((b) =>
+        scope.querySelectorAll('[data-discover]').forEach((b) =>
           b.classList.toggle('active', b.dataset.discover === this.discoverTab)
         );
         this._renderDiscover();
       });
     });
 
-    this.container.addEventListener('click', (e) => {
+    // Silent hover prefetch on Home cards (220ms)
+    let cardHoverTimer = null;
+    scope.addEventListener('mouseover', (e) => {
+      const card = e.target.closest('.doc-card[data-open-slug]');
+      if (!card) return;
+      if (cardHoverTimer) clearTimeout(cardHoverTimer);
+      const cSite = card.dataset.openSite;
+      const cSlug = card.dataset.openSlug;
+      cardHoverTimer = setTimeout(() => {
+        if (cSlug) window.scpApi.prefetchArticle(cSite, cSlug);
+      }, 220);
+    });
+    scope.addEventListener('mouseout', (e) => {
+      if (e.target.closest('.doc-card[data-open-slug]') && cardHoverTimer) {
+        clearTimeout(cardHoverTimer);
+        cardHoverTimer = null;
+      }
+    });
+
+    scope.addEventListener('click', (e) => {
       const card = e.target.closest('.doc-card[data-open-slug]');
       if (!card) return;
       const openNew = e.ctrlKey || e.metaKey;
       this.ctx.openArticle(card.dataset.openSite, card.dataset.openSlug, { newTab: openNew });
     });
 
-    this.container.addEventListener('auxclick', (e) => {
+    scope.addEventListener('auxclick', (e) => {
       if (e.button !== 1) return;
       const card = e.target.closest('.doc-card[data-open-slug]');
       if (!card) return;

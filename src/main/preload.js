@@ -27,6 +27,12 @@ contextBridge.exposeInMainWorld('scpApi', {
 
   // Articles
   loadArticle: (site, slug, opts) => ipcRenderer.invoke('article:load', site, slug, opts),
+  prefetchArticle: (site, slug) => ipcRenderer.invoke('article:prefetch', site, slug),
+  onArticleProgress: (cb) => {
+    const handler = (_event, payload) => cb(payload);
+    ipcRenderer.on('article:load-progress', handler);
+    return () => ipcRenderer.removeListener('article:load-progress', handler);
+  },
   detectSiteFromUrl: (url) => ipcRenderer.invoke('article:detectUrl', url),
 
   // Bookmarks

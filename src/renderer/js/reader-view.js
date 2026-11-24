@@ -8,6 +8,29 @@ function esc(str) {
     .replace(/"/g, '&quot;');
 }
 
+function buildScpLoaderHtml(slug, stageText, initialPct = 18) {
+  return `
+    <div class="reader-state-box">
+      <svg class="scp-loader-emblem" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle class="boot-ring-spin" cx="60" cy="60" r="48" stroke="currentColor" stroke-width="1.8" stroke-dasharray="6 5" opacity="0.55" />
+        <g id="ld-t-${esc(slug.replace(/[^a-z0-9]/gi, ''))}">
+          <path d="M23.5 39 A42 42 0 0 1 46 20.5 L48 10 H72 L74 20.5 A42 42 0 0 1 96.5 39" stroke="currentColor" stroke-width="4.5" stroke-linecap="square" />
+          <path d="M56.5 22 H63.5 V35 H70 L60 47 L50 35 H56.5 Z" fill="currentColor" />
+        </g>
+        <use href="#ld-t-${esc(slug.replace(/[^a-z0-9]/gi, ''))}" transform="rotate(120 60 60)" />
+        <use href="#ld-t-${esc(slug.replace(/[^a-z0-9]/gi, ''))}" transform="rotate(240 60 60)" />
+        <circle cx="60" cy="60" r="14.5" stroke="#e04c58" stroke-width="4" />
+      </svg>
+      <div class="scp-loader-title">${esc(String(slug || 'SCP').toUpperCase())}</div>
+      <div class="scp-loader-track"><div class="scp-loader-fill" style="width:${initialPct}%"></div></div>
+      <div class="scp-loader-meta">
+        <span class="scp-loader-stage">${esc(stageText)}</span>
+        <span class="scp-loader-pct">${initialPct}%</span>
+      </div>
+    </div>
+  `;
+}
+
 export class ReaderView {
   constructor(container, ctx, tab) {
     this.container = container;
@@ -63,18 +86,50 @@ export class ReaderView {
     }
   }
 
-  async _loadCleanMode(site, slug, { forceOnline, preferCache, token }) {
+  async _loadCleanMode(site, slug, { forceOnline, preferCache = true, token }) {
     this.webview = null;
-    this.container.innerHTML = `
-      <div class="reader-state-box">
-        <div class="spinner"></div>
-        <p>${esc(t('reader.loading', { slug: slug.toUpperCase() }))}</p>
-      </div>
-    `;
+    const reqId = `req-${this.tab.id}-${token}`;
+    let curPct = 16;
+    this.container.innerHTML = buildScpLoaderHtml(slug, t('reader.stageCache'), curPct);
+
+    const updateLoader = (pct, stageKey) => {
+      if (token !== this.loadToken) return;
+      curPct = Math.max(curPct, Math.min(99, pct));
+      const fill = this.container.querySelector('.scp-loader-fill');
+      const pctEl = this.container.querySelector('.scp-loader-pct');
+      const stageEl = this.container.querySelector('.scp-loader-stage');
+      if (fill) fill.style.width = `${curPct}%`;
+      if (pctEl) pctEl.textContent = `${curPct}%`;
+      if (stageEl && stageKey) {
+        const map = {
+          cache: 'reader.stageCache',
+          network: 'reader.stageNetwork',
+          parse: 'reader.stageParse',
+          ready: 'reader.stageReady'
+        };
+        if (map[stageKey]) stageEl.textContent = t(map[stageKey]);
+      }
+    };
+
+    const unsubProgress = window.scpApi.onArticleProgress((p) => {
+      if (p && p.requestId === reqId) updateLoader(p.pct, p.stage);
+    });
+
+    // Gentle progress creep during slow network round-trips so UI always feels alive
+    const creepTimer = setInterval(() => {
+      if (curPct < 74) updateLoader(curPct + 4, null);
+    }, 320);
 
     try {
-      const article = await window.scpApi.loadArticle(site, slug, { forceOnline, preferCache });
+      const article = await window.scpApi.loadArticle(site, slug, {
+        forceOnline: Boolean(forceOnline),
+        preferCache: forceOnline ? false : Boolean(preferCache),
+        requestId: reqId
+      });
+      clearInterval(creepTimer);
+      unsubProgress();
       if (token !== this.loadToken) return;
+
       this.article = article;
       this.tab.article = article;
       this.tab.title = article.title || slug.toUpperCase();
@@ -90,18 +145,23 @@ export class ReaderView {
         return;
       }
 
-      await window.scpApi.addHistory({
-        site: article.site,
-        slug: article.slug,
-        title: article.title,
-        subtitle: article.excerpt?.slice(0, 60) || '',
-        rating: article.rating
-      });
-      this.ctx.refreshSidebarData();
-
       this._renderCleanArticle(article);
       await this._restoreProgressIfEnabled(site, slug);
+
+      // Update history & sidebar non-blockingly after the article is already painted!
+      window.scpApi
+        .addHistory({
+          site: article.site,
+          slug: article.slug,
+          title: article.title,
+          subtitle: article.excerpt?.slice(0, 60) || '',
+          rating: article.rating
+        })
+        .then(() => this.ctx.refreshSidebarData({ onlyActivePanel: true }))
+        .catch(() => {});
     } catch (err) {
+      clearInterval(creepTimer);
+      unsubProgress();
       if (token !== this.loadToken) return;
       this.container.innerHTML = `
         <div class="reader-state-box">
@@ -252,7 +312,39 @@ export class ReaderView {
   }
 
   _bindCleanEvents() {
-    const bodyRoot = this.container;
+    // Bind directly onto the fresh .reader-layout node so repeated navigations never stack listeners!
+    const bodyRoot = this.container.querySelector('.reader-layout') || this.container;
+
+    // Hover prefetch for internal SCP links (warms RAM cache silently in 220ms)
+    let hoverTimer = null;
+    bodyRoot.addEventListener('mouseover', (e) => {
+      const link = e.target.closest('a[data-scp-slug]');
+      if (!link) return;
+      if (hoverTimer) clearTimeout(hoverTimer);
+      const pSite = link.getAttribute('data-scp-site') || this.tab.site;
+      const pSlug = link.getAttribute('data-scp-slug');
+      hoverTimer = setTimeout(() => {
+        if (pSlug) window.scpApi.prefetchArticle(pSite, pSlug);
+      }, 220);
+    });
+    bodyRoot.addEventListener('mouseout', (e) => {
+      if (e.target.closest('a[data-scp-slug]') && hoverTimer) {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+      }
+    });
+
+    // Ctrl + Mouse Wheel font-size zoom inside reader
+    bodyRoot.addEventListener(
+      'wheel',
+      (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          this.ctx.bumpFontSize(e.deltaY < 0 ? 1 : -1);
+        }
+      },
+      { passive: false }
+    );
 
     // Click delegation: collapsibles, YUI tabs, footnotes, TOC, links, tags, switch original
     bodyRoot.addEventListener('click', (e) => {
@@ -418,10 +510,21 @@ export class ReaderView {
     this.container.innerHTML = `
       <div class="original-wrap">
         <div class="original-loading-bar"></div>
+        <div class="original-splash">${buildScpLoaderHtml(slug, t('reader.stageOriginal'), 28)}</div>
       </div>
     `;
     const wrap = this.container.querySelector('.original-wrap');
     const bar = this.container.querySelector('.original-loading-bar');
+    const splash = this.container.querySelector('.original-splash');
+    let origPct = 28;
+    const setOrigPct = (v) => {
+      origPct = Math.max(origPct, Math.min(96, v));
+      const fill = splash?.querySelector('.scp-loader-fill');
+      const pctEl = splash?.querySelector('.scp-loader-pct');
+      if (fill) fill.style.width = `${origPct}%`;
+      if (pctEl) pctEl.textContent = `${origPct}%`;
+    };
+    const origCreep = setInterval(() => setOrigPct(origPct + 6), 350);
 
     const wv = document.createElement('webview');
     wv.className = 'original-webview';
@@ -432,9 +535,19 @@ export class ReaderView {
     wrap.appendChild(wv);
     this.webview = wv;
 
+    const dismissSplash = () => {
+      clearInterval(origCreep);
+      setOrigPct(100);
+      if (splash && !splash.classList.contains('done')) {
+        splash.classList.add('done');
+        setTimeout(() => splash.remove(), 220);
+      }
+    };
+
     wv.addEventListener('did-start-loading', () => bar?.classList.remove('hidden'));
     wv.addEventListener('did-stop-loading', () => {
       bar?.classList.add('hidden');
+      dismissSplash();
       try {
         wv.send('scp-apply-enhancements', this.ctx.getSettings());
       } catch {
@@ -443,6 +556,8 @@ export class ReaderView {
     });
 
     wv.addEventListener('dom-ready', async () => {
+      setOrigPct(86);
+      dismissSplash();
       try {
         wv.send('scp-apply-enhancements', this.ctx.getSettings());
         if (this.ctx.getSettings().autoRestoreProgress) {

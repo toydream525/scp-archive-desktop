@@ -29,6 +29,40 @@ let scpService = null;
 let cacheService = null;
 let exportService = null;
 
+// Fast in-memory LRU cache for parsed articles (instant <5ms re-open & hover prefetch)
+const ramArticleCache = new Map();
+const RAM_CACHE_MAX = 60;
+const inflightFetches = new Map();
+
+function ramCacheKey(site, slug) {
+  return `${String(site || 'cn').toLowerCase()}:${slug}`;
+}
+
+function getRamArticle(site, slug) {
+  const key = ramCacheKey(site, slug);
+  if (!ramArticleCache.has(key)) return null;
+  const val = ramArticleCache.get(key);
+  // Refresh LRU recency
+  ramArticleCache.delete(key);
+  ramArticleCache.set(key, val);
+  return val;
+}
+
+function setRamArticle(site, slug, payload) {
+  const key = ramCacheKey(site, slug);
+  if (ramArticleCache.has(key)) ramArticleCache.delete(key);
+  ramArticleCache.set(key, payload);
+  if (ramArticleCache.size > RAM_CACHE_MAX) {
+    const oldest = ramArticleCache.keys().next().value;
+    ramArticleCache.delete(oldest);
+  }
+}
+
+function sendLoadProgress(requestId, pct, stage) {
+  if (!requestId || !mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send('article:load-progress', { requestId, pct, stage });
+}
+
 function getTitleBarOverlayColors(theme) {
   if (theme === 'light') {
     return { color: '#eceef2', symbolColor: '#1f2328', height: 38 };
@@ -168,43 +202,75 @@ function registerIpcHandlers() {
   ipcMain.handle('article:discover', (_ev, site, opts) => scpService.getDiscoverPages(site, opts));
   ipcMain.handle('article:detectUrl', (_ev, url) => scpService.detectSiteFromUrl(url));
 
-  // Article Loader
+  // Article Loader (RAM LRU -> Disk Cache First -> Deduplicated Online Fetch + Real Progress)
   ipcMain.handle('article:load', async (_ev, site, rawSlug, opts = {}) => {
     const branch = getBranch(site);
     const targetSite = branch.id;
     const slug = scpService.normalizeSlug(rawSlug);
-    const { forceOnline = false, preferCache = false } = opts;
+    const { forceOnline = false, preferCache = true, requestId = null } = opts;
+    const key = ramCacheKey(targetSite, slug);
 
-    if (preferCache && !forceOnline) {
+    sendLoadProgress(requestId, 18, 'cache');
+
+    if (!forceOnline && preferCache) {
+      const mem = getRamArticle(targetSite, slug);
+      if (mem) {
+        sendLoadProgress(requestId, 100, 'ready');
+        return { ...mem, isCached: cacheService.isCached(targetSite, slug) || Boolean(mem.isCached) };
+      }
       const cached = cacheService.getCachedArticle(targetSite, slug);
       if (cached) {
         const { rawHtml: _ignored, ...rendererPayload } = cached;
-        return { ...rendererPayload, isCached: true };
+        const result = { ...rendererPayload, fromCache: true, isCached: true };
+        setRamArticle(targetSite, slug, result);
+        sendLoadProgress(requestId, 100, 'ready');
+        return result;
       }
     }
 
     try {
-      const article = await scpService.fetchArticle(targetSite, slug);
+      sendLoadProgress(requestId, 42, 'network');
+      let fetchPromise = inflightFetches.get(key);
+      if (!fetchPromise || forceOnline) {
+        fetchPromise = scpService.fetchArticle(targetSite, slug);
+        inflightFetches.set(key, fetchPromise);
+        fetchPromise.finally(() => {
+          if (inflightFetches.get(key) === fetchPromise) inflightFetches.delete(key);
+        });
+      }
+
+      const article = await fetchPromise;
+      sendLoadProgress(requestId, 82, 'parse');
+
       const settings = store.getSettings();
       let isCached = cacheService.isCached(targetSite, slug);
 
       if (!article.notFound && settings.autoCacheOnRead) {
-        cacheService
-          .saveArticle(article, { downloadImages: Boolean(settings.cacheImages) })
-          .catch(() => {});
+        // Save lightweight text cache quickly, defer image localization so active reading stays snappy
         isCached = true;
+        setTimeout(() => {
+          cacheService
+            .saveArticle(article, { downloadImages: Boolean(settings.cacheImages) })
+            .catch(() => {});
+        }, 650);
       }
 
       const { rawHtml: _ignored, ...rendererPayload } = article;
-      return {
+      const result = {
         ...rendererPayload,
         fromCache: false,
         isCached
       };
+      if (!article.notFound) {
+        setRamArticle(targetSite, slug, result);
+      }
+      sendLoadProgress(requestId, 100, 'ready');
+      return result;
     } catch (err) {
       const cached = cacheService.getCachedArticle(targetSite, slug);
       if (cached) {
         const { rawHtml: _ignored, ...rendererPayload } = cached;
+        sendLoadProgress(requestId, 100, 'ready');
         return {
           ...rendererPayload,
           fromCache: true,
@@ -214,6 +280,40 @@ function registerIpcHandlers() {
       }
       throw new Error(err.message || String(err));
     }
+  });
+
+  // Silent hover prefetch into RAM cache (never blocks UI, max 2 inflight)
+  ipcMain.handle('article:prefetch', async (_ev, site, rawSlug) => {
+    const branch = getBranch(site);
+    const targetSite = branch.id;
+    const slug = scpService.normalizeSlug(rawSlug);
+    const key = ramCacheKey(targetSite, slug);
+    if (getRamArticle(targetSite, slug) || inflightFetches.has(key) || inflightFetches.size >= 2) {
+      return false;
+    }
+    const cached = cacheService.getCachedArticle(targetSite, slug);
+    if (cached) {
+      const { rawHtml: _ignored, ...rendererPayload } = cached;
+      setRamArticle(targetSite, slug, { ...rendererPayload, fromCache: true, isCached: true });
+      return true;
+    }
+    const p = scpService.fetchArticle(targetSite, slug);
+    inflightFetches.set(key, p);
+    p.then((article) => {
+      if (!article.notFound) {
+        const { rawHtml: _ignored, ...rendererPayload } = article;
+        setRamArticle(targetSite, slug, {
+          ...rendererPayload,
+          fromCache: false,
+          isCached: cacheService.isCached(targetSite, slug)
+        });
+      }
+    })
+      .catch(() => {})
+      .finally(() => {
+        if (inflightFetches.get(key) === p) inflightFetches.delete(key);
+      });
+    return true;
   });
 
   // Bookmarks

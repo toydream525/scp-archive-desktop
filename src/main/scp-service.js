@@ -155,14 +155,14 @@ class ScpService {
       };
     }
 
-    const $c = cheerio.load(`<div id="scp-clean-root">${contentEl.html()}</div>`);
-    const root = $c('#scp-clean-root');
+    // Operate directly on contentEl inside the single cheerio DOM (avoids double HTML parsing)
+    const root = contentEl;
 
     const iframeCount = root.find('iframe.html-block-iframe, iframe').length;
     const mediaInteractive = root.find('canvas, audio, video').length;
     let totalStyleChars = 0;
     root.find('style').each((_, el) => {
-      totalStyleChars += ($c(el).html() || '').length;
+      totalStyleChars += ($(el).html() || '').length;
     });
     const hasComplexInteractive = iframeCount > 0 || mediaInteractive > 0 || totalStyleChars > 800;
 
@@ -174,7 +174,7 @@ class ScpService {
 
     // Footnote references
     root.find('a.footnoteref').each((_, el) => {
-      const $el = $c(el);
+      const $el = $(el);
       const onclick = $el.attr('onclick') || '';
       const m = onclick.match(/footnote-\d+/);
       if (m) $el.attr('data-footnote-target', m[0]);
@@ -184,7 +184,7 @@ class ScpService {
 
     // Footnote backlinks
     root.find('.footnote-footer a').each((_, el) => {
-      const $el = $c(el);
+      const $el = $(el);
       const onclick = $el.attr('onclick') || '';
       const m = onclick.match(/footnoteref-\d+/);
       if (m) {
@@ -196,7 +196,7 @@ class ScpService {
 
     // Collapsibles
     root.find('.collapsible-block-link').each((_, el) => {
-      const $el = $c(el);
+      const $el = $(el);
       $el.attr('href', 'javascript:;');
       $el.removeAttr('onclick');
     });
@@ -204,7 +204,7 @@ class ScpService {
     // Images
     const imageSet = new Set();
     root.find('img').each((_, el) => {
-      const $img = $c(el);
+      const $img = $(el);
       const rawSrc = $img.attr('src') || $img.attr('data-src');
       if (!rawSrc) return;
       const absSrc = this.resolveAbsoluteUrl(rawSrc, baseUrl);
@@ -219,7 +219,7 @@ class ScpService {
 
     // Links
     root.find('a').each((_, el) => {
-      const $a = $c(el);
+      const $a = $(el);
       if ($a.hasClass('collapsible-block-link') || $a.hasClass('footnoteref') || $a.attr('data-footnote-back')) {
         return;
       }
@@ -241,7 +241,7 @@ class ScpService {
 
     // Iframes notice
     root.find('iframe').each((_, el) => {
-      $c(el).replaceWith(
+      $(el).replaceWith(
         '<div class="scp-iframe-notice" data-iframe-placeholder="1"><span class="scp-iframe-text"></span><button class="scp-inline-switch-btn" data-action="switch-original"></button></div>'
       );
     });
@@ -250,7 +250,7 @@ class ScpService {
     const toc = [];
     let headingIdx = 0;
     root.find('h1, h2, h3, h4').each((_, el) => {
-      const $h = $c(el);
+      const $h = $(el);
       const text = $h.text().trim();
       if (!text || text.length > 100) return;
       const id = `scp-toc-${headingIdx++}`;

@@ -15,6 +15,7 @@ class CacheService {
     this.scpService = scpService;
     this.store = store;
     this.index = this._readIndex();
+    this.assetHashMap = this._scanAssetHashes();
     this.batchState = {
       running: false,
       cancelled: false,
@@ -103,23 +104,41 @@ class CacheService {
     }
   }
 
+  _scanAssetHashes() {
+    const map = new Map();
+    try {
+      for (const f of fs.readdirSync(this.assetsDir)) {
+        const dot = f.indexOf('.');
+        if (dot > 0) {
+          const hash = f.slice(0, dot);
+          const size = fs.statSync(path.join(this.assetsDir, f)).size;
+          map.set(hash, { filename: f, size });
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return map;
+  }
+
   async _downloadImageAsset(imgUrl) {
     try {
-      // If already downloaded under common extension, reuse
       const hash = crypto.createHash('sha1').update(imgUrl).digest('hex');
-      const existing = fs.readdirSync(this.assetsDir).find((f) => f.startsWith(`${hash}.`));
-      if (existing) {
-        return { filename: existing, size: fs.statSync(path.join(this.assetsDir, existing)).size };
+      const cached = this.assetHashMap.get(hash);
+      if (cached) {
+        return cached;
       }
 
       const res = await this.scpService.fetchWithProxy(imgUrl, { timeoutMs: 12000 });
       if (!res.ok) return null;
       const buf = Buffer.from(await res.arrayBuffer());
-      if (buf.length === 0 || buf.length > 12 * 1024 * 1024) return null; // skip empty or >12MB
+      if (buf.length === 0 || buf.length > 12 * 1024 * 1024) return null;
       const contentType = res.headers.get('content-type') || '';
       const filename = this._assetFilename(imgUrl, contentType);
       fs.writeFileSync(path.join(this.assetsDir, filename), buf);
-      return { filename, size: buf.length };
+      const entry = { filename, size: buf.length };
+      this.assetHashMap.set(hash, entry);
+      return entry;
     } catch {
       return null;
     }
@@ -231,22 +250,16 @@ class CacheService {
       fs.unlinkSync(path.join(this.assetsDir, f));
     }
     this.index = {};
+    this.assetHashMap.clear();
     this._saveIndex();
     return true;
   }
 
   getStats() {
-    const list = this.listCached();
+    const list = Object.values(this.index);
     let totalBytes = 0;
-    try {
-      for (const f of fs.readdirSync(this.pagesDir)) {
-        totalBytes += fs.statSync(path.join(this.pagesDir, f)).size;
-      }
-      for (const f of fs.readdirSync(this.assetsDir)) {
-        totalBytes += fs.statSync(path.join(this.assetsDir, f)).size;
-      }
-    } catch {
-      // ignore
+    for (const item of list) {
+      totalBytes += Number(item.sizeBytes) || 0;
     }
     return {
       count: list.length,

@@ -32,6 +32,9 @@ export class SidebarController {
     this.ctx = ctx;
     this.activePanel = 'catalog';
     this.seriesItems = [];
+    this.seriesFilteredItems = [];
+    this.seriesRenderedCount = 0;
+    this.seriesMemoryCache = new Map();
     this.currentSeriesSlug = '';
     this.bookmarks = [];
     this.history = [];
@@ -107,8 +110,40 @@ export class SidebarController {
       dragging = false;
     });
 
-    // Global item-list click & middle-click delegation
+    // Chunked infinite scroll for large 1000-entry series lists (zero UI jank)
+    const seriesListEl = document.getElementById('series-list');
+    seriesListEl.addEventListener(
+      'scroll',
+      () => {
+        if (this.seriesRenderedCount >= this.seriesFilteredItems.length) return;
+        if (seriesListEl.scrollTop + seriesListEl.clientHeight >= seriesListEl.scrollHeight - 280) {
+          this._appendSeriesChunk();
+        }
+      },
+      { passive: true }
+    );
+
+    // Silent hover prefetch on sidebar rows (220ms)
     const sidebarPanel = document.getElementById('sidebar-panel');
+    let rowHoverTimer = null;
+    sidebarPanel.addEventListener('mouseover', (e) => {
+      const row = e.target.closest('.list-row[data-slug]');
+      if (!row || row.classList.contains('unwritten')) return;
+      if (rowHoverTimer) clearTimeout(rowHoverTimer);
+      const rSite = row.dataset.site;
+      const rSlug = row.dataset.slug;
+      rowHoverTimer = setTimeout(() => {
+        if (rSlug) window.scpApi.prefetchArticle(rSite, rSlug);
+      }, 220);
+    });
+    sidebarPanel.addEventListener('mouseout', (e) => {
+      if (e.target.closest('.list-row[data-slug]') && rowHoverTimer) {
+        clearTimeout(rowHoverTimer);
+        rowHoverTimer = null;
+      }
+    });
+
+    // Global item-list click & middle-click delegation
     sidebarPanel.addEventListener('click', async (e) => {
       const delBtn = e.target.closest('[data-del-kind]');
       if (delBtn) {
@@ -373,8 +408,15 @@ export class SidebarController {
   async loadSeries(seriesSlug, forceRefresh = false) {
     this.currentSeriesSlug = seriesSlug;
     const site = this.ctx.getSite();
+    const memKey = `${site}:${seriesSlug}`;
     const statusEl = document.getElementById('series-status');
     const listEl = document.getElementById('series-list');
+
+    if (!forceRefresh && this.seriesMemoryCache.has(memKey)) {
+      this.seriesItems = this.seriesMemoryCache.get(memKey);
+      this._renderSeriesItems();
+      return;
+    }
 
     statusEl.textContent = t('sidebar.loadingSeries');
     listEl.innerHTML = `<div class="list-empty">${esc(t('sidebar.loadingSeries'))}</div>`;
@@ -382,6 +424,7 @@ export class SidebarController {
     try {
       const res = await window.scpApi.fetchSeriesCatalog(site, seriesSlug, { forceRefresh });
       this.seriesItems = res.items || [];
+      this.seriesMemoryCache.set(memKey, this.seriesItems);
       this._renderSeriesItems();
     } catch (err) {
       statusEl.textContent = t('sidebar.seriesError', { msg: err.message || err });
@@ -398,6 +441,13 @@ export class SidebarController {
       ? this.seriesItems.filter((it) => `${it.code} ${it.subtitle} ${it.slug}`.toLowerCase().includes(filter))
       : this.seriesItems;
 
+    this.seriesFilteredItems = filtered;
+    this.seriesRenderedCount = 0;
+    this._seriesLastSec = '';
+    this._seriesHasFilter = Boolean(filter);
+    this._seriesCachedSet = new Set(this.cachedList.map((c) => `${c.site}:${c.slug}`));
+    this._seriesBmSet = new Set(this.bookmarks.map((b) => `${b.site}:${b.slug}`));
+
     statusEl.textContent = filter
       ? t('sidebar.seriesFiltered', { shown: filtered.length, total: this.seriesItems.length })
       : t('sidebar.seriesLoaded', { count: this.seriesItems.length });
@@ -407,20 +457,29 @@ export class SidebarController {
       return;
     }
 
-    const cachedSet = new Set(this.cachedList.map((c) => `${c.site}:${c.slug}`));
-    const bmSet = new Set(this.bookmarks.map((b) => `${b.site}:${b.slug}`));
+    listEl.innerHTML = '';
+    listEl.scrollTop = 0;
+    this._appendSeriesChunk();
+  }
 
-    let lastSec = '';
+  _appendSeriesChunk() {
+    const listEl = document.getElementById('series-list');
+    const CHUNK = 120;
+    const start = this.seriesRenderedCount;
+    const end = Math.min(this.seriesFilteredItems.length, start + CHUNK);
+    if (start >= end) return;
+
     const chunks = [];
-    for (const it of filtered) {
-      if (it.section && it.section !== lastSec && !filter) {
-        lastSec = it.section;
-        chunks.push(`<div class="list-section-hdr">${esc(lastSec)}</div>`);
+    for (let i = start; i < end; i++) {
+      const it = this.seriesFilteredItems[i];
+      if (it.section && it.section !== this._seriesLastSec && !this._seriesHasFilter) {
+        this._seriesLastSec = it.section;
+        chunks.push(`<div class="list-section-hdr">${esc(this._seriesLastSec)}</div>`);
       }
       const key = `${it.site}:${it.slug}`;
       const flags = [];
-      if (bmSet.has(key)) flags.push('★');
-      if (cachedSet.has(key)) flags.push('⬇');
+      if (this._seriesBmSet.has(key)) flags.push('★');
+      if (this._seriesCachedSet.has(key)) flags.push('⬇');
       if (it.unwritten) flags.push(t('sidebar.unwritten'));
 
       chunks.push(`
@@ -433,7 +492,8 @@ export class SidebarController {
         </div>
       `);
     }
-    listEl.innerHTML = chunks.join('');
+    listEl.insertAdjacentHTML('beforeend', chunks.join(''));
+    this.seriesRenderedCount = end;
   }
 
   async runSearch(keyword) {
@@ -513,7 +573,7 @@ export class SidebarController {
       .join('');
   }
 
-  async refreshUserData() {
+  async refreshUserData({ onlyActivePanel = false } = {}) {
     const [bookmarks, history, progressMap, cachedList, stats] = await Promise.all([
       window.scpApi.getBookmarks(),
       window.scpApi.getHistory(),
@@ -526,10 +586,13 @@ export class SidebarController {
     this.progressMap = progressMap || {};
     this.cachedList = cachedList || [];
 
-    this._renderBookmarks();
-    this._renderHistory();
-    this._renderOffline(stats);
-    if (this.seriesItems.length) this._renderSeriesItems();
+    if (!onlyActivePanel || this.activePanel === 'bookmarks') this._renderBookmarks();
+    if (!onlyActivePanel || this.activePanel === 'history') this._renderHistory();
+    if (!onlyActivePanel || this.activePanel === 'offline') this._renderOffline(stats);
+    // Avoid rebuilding the catalog DOM on every article read unless explicitly requested
+    if (!onlyActivePanel && this.activePanel === 'catalog' && this.seriesItems.length) {
+      this._renderSeriesItems();
+    }
   }
 
   _renderBookmarks() {
